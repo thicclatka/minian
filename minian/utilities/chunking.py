@@ -179,5 +179,3 @@ def optimize_chunk(arr: xr.DataArray, chk: dict) -> xr.DataArray:
     with da.config.set(array_optimize=arr_opt):
         arr_chk.data = da.optimize(arr_chk.data)[0]
     return arr_chk
-
-

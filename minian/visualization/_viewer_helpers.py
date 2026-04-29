@@ -43,6 +43,7 @@ def wire_frame_player_index(
     emit_frame: Callable[[int], None],
 ) -> None:
     """When the player index changes, call ``emit_frame(new_index)`` (skips no-op updates)."""
+
     def _play(evt):
         if evt.old != evt.new:
             emit_frame(int(evt.new))

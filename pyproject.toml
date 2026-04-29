@@ -34,9 +34,7 @@ dependencies = [
     "opencv-python>=4.10.0.84",
     "pandas>=2.2.2",
     "pyfftw>=0.13.1",
-    # pymetis does not ship Windows wheels and its Meson/GKlib build fails on MSVC/MinGW
-    # CI (missing POSIX headers); use an in-graph fallback in minian.cnmf.graphs when absent.
-    "pymetis>=2023.1.1; sys_platform != 'win32'",
+    "pymetis>=2023.1.1",
     "rechunker>=0.5.3",
     "requests>=2.33.1",
     "scikit-image>=0.24.0",
@@ -98,6 +96,7 @@ version_files = [
 [dependency-groups]
 dev = [
     "black>=24.0.0",
+    "pre-commit>=4.0.0",
     "coverage[toml]>=7.0.0",
     "ipykernel>=7.2.0",
     "maturin>=1.13.1",

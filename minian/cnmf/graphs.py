@@ -1,5 +1,5 @@
-"""CNMF decomposition and helpers (combined module).
-"""
+"""CNMF decomposition and helpers (combined module)."""
+
 import logging
 from typing import List, Union
 
@@ -7,36 +7,13 @@ import dask as da
 import networkx as nx
 import numpy as np
 import pandas as pd
+import pymetis
 import scipy.sparse
 import xarray as xr
-
-try:
-    import pymetis as _pymetis
-except ImportError:  # pragma: no cover - wheels missing on Windows
-    _pymetis = None
-
-
-
 
 from .filters import filt_fft_vec
 
 log = logging.getLogger(__name__)
-
-
-def _fallback_partition(sorted_nodes: list, nparts: int) -> list[int]:
-    """Deterministic contiguous partitions when pymetis/METIS is unavailable."""
-    n = len(sorted_nodes)
-    nparts = max(int(nparts), 1)
-    if n == 0:
-        return []
-    membership = [0] * n
-    base, rem = divmod(n, nparts)
-    idx = 0
-    for p in range(nparts):
-        for _ in range(base + (1 if p < rem else 0)):
-            membership[idx] = p
-            idx += 1
-    return membership
 
 
 def label_connected(
@@ -79,6 +56,7 @@ def label_connected(
         else:
             labels[comp] = icomp
     return labels
+
 
 def graph_optimize_corr(
     varr: xr.DataArray,
@@ -131,13 +109,10 @@ def graph_optimize_corr(
         representing the node index of the edge (correlation), and column "corr"
         with computed value of correlation.
     """
-    nparts = max(int(np.ceil(G.number_of_nodes() / chunk)), 1)
-    if _pymetis is not None:
-        _cuts, membership = _pymetis.part_graph(
-            nparts, adjacency=adj_list(G)
-        )
-    else:
-        membership = _fallback_partition(sorted(G.nodes()), nparts)
+    # a heuristic to make number of partitions scale with nodes
+    n_cuts, membership = pymetis.part_graph(
+        max(int(np.ceil(G.number_of_nodes() / chunk)), 1), adjacency=adj_list(G)
+    )
     nx.set_node_attributes(
         G, {k: {"part": v} for k, v in zip(sorted(G.nodes), membership)}
     )
@@ -187,14 +162,13 @@ def graph_optimize_corr(
             npxs.append(len(pixels))
             pixels = set()
             eg_ls = []
-    log.info(
-        "pixel recompute ratio: {}".format(sum(npxs) / G.number_of_nodes())
-    )
+    log.info("pixel recompute ratio: {}".format(sum(npxs) / G.number_of_nodes()))
     log.info("graph_optimize_corr: computing correlations")
     corr_ls = da.compute(corr_ls)[0]
     corr = pd.Series(np.concatenate(corr_ls), index=np.concatenate(idx_ls), name="corr")
     eg_df["corr"] = corr
     return eg_df
+
 
 def adj_corr(
     varr: xr.DataArray, adj: np.ndarray, nod_df: pd.DataFrame, freq: float
@@ -235,6 +209,7 @@ def adj_corr(
         (corr_df["corr"], (corr_df["source"], corr_df["target"])), shape=adj.shape
     )
 
+
 def adj_list(G: nx.Graph) -> List[np.ndarray]:
     """
     Generate adjacency list representation from graph.
@@ -251,6 +226,7 @@ def adj_list(G: nx.Graph) -> List[np.ndarray]:
     """
     gdict = nx.to_dict_of_dicts(G)
     return [np.array(list(gdict[k].keys())) for k in sorted(gdict.keys())]
+
 
 def smooth_corr(
     X: np.ndarray, ridx: np.ndarray, cidx: np.ndarray, freq: float
@@ -278,6 +254,7 @@ def smooth_corr(
     if freq:
         X = filt_fft_vec(X, freq, "low")
     return idx_corr(X, ridx, cidx)
+
 
 def idx_corr(X: np.ndarray, ridx: np.ndarray, cidx: np.ndarray) -> np.ndarray:
     """

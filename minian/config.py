@@ -130,9 +130,7 @@ class PipelineConfig:
     """
 
     intpath: str = field(default_factory=get_minian_intermediate_path)
-    subset: Mapping[str, Any] = field(
-        default_factory=lambda: {"frame": slice(0, None)}
-    )
+    subset: Mapping[str, Any] = field(default_factory=lambda: {"frame": slice(0, None)})
     subset_mc: Optional[Mapping[str, Any]] = None
     interactive: bool = True
     output_size: int = 100
@@ -171,9 +169,7 @@ class PipelineConfig:
     param_pnr_refine: Dict[str, Any] = field(
         default_factory=lambda: {"noise_freq": 0.06, "thres": 1}
     )
-    param_ks_refine: Dict[str, Any] = field(
-        default_factory=lambda: {"sig": 0.05}
-    )
+    param_ks_refine: Dict[str, Any] = field(default_factory=lambda: {"sig": 0.05})
     param_seeds_merge: Dict[str, Any] = field(
         default_factory=lambda: {
             "thres_dist": 10,

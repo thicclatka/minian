@@ -77,6 +77,4 @@ def test_thread_allocation_matches_default_cluster_workers():
     ta = rs.thread_allocation(2)
     assert int(ta.cluster_workers) == int(rs.default_cluster_workers(2))
     assert int(ta.logical_cpus) == int(rs.logical_parallelism())
-    assert int(ta.after_reserve_cpus) == max(
-        0, int(rs.logical_parallelism()) - 2
-    )
+    assert int(ta.after_reserve_cpus) == max(0, int(rs.logical_parallelism()) - 2)

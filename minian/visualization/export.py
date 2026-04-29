@@ -113,9 +113,7 @@ def write_video(
                 pix_fmt=RawGray.PIX_FMT,
                 s="{}x{}".format(w, h),
             )
-            .filter(
-                H264.PAD_FILTER, int(np.ceil(w / 2) * 2), int(np.ceil(h / 2) * 2)
-            )
+            .filter(H264.PAD_FILTER, int(np.ceil(w / 2) * 2), int(np.ceil(h / 2) * 2))
             .output(
                 fname,
                 pix_fmt=H264.OUTPUT_PIX_FMT,

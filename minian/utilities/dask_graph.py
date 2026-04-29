@@ -14,7 +14,6 @@ from dask.utils import ensure_dict
 from distributed.diagnostics.plugin import SchedulerPlugin
 from distributed.scheduler import SchedulerState, cast
 
-
 ANNOTATIONS = {
     "from-zarr-store": {"resources": {"MEM": 1}},
     "load_avi_ffmpeg": {"resources": {"MEM": 1}},
@@ -452,5 +451,3 @@ def get_keys_pat(pat: str, keys: list, return_all=False) -> Union[list, str]:
         return keys_filt
     else:
         return keys_filt[0]
-
-

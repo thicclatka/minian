@@ -14,7 +14,16 @@ from datashader import count_cat
 from holoviews.operation.datashader import datashade, dynspread
 from holoviews.util import Dynamic
 
-from ._viz_constants import Datashade, Gmm, ImagePalette, Motion, Preprocess, Seeds, Spatial, Temporal
+from ._viz_constants import (
+    Datashade,
+    Gmm,
+    ImagePalette,
+    Motion,
+    Preprocess,
+    Seeds,
+    Spatial,
+    Temporal,
+)
 from ._numeric import centroid, construct_pulse_response, normalize
 
 
@@ -465,7 +474,7 @@ def visualize_temporal_update(
         ins[:] = [i.compute() for i in ins]
         ya, c, s, sig, g = ins
         f_crd = ya.coords["frame"]
-        pul_crd = f_crd.values[:Temporal.PULSE_PREVIEW_LEN]
+        pul_crd = f_crd.values[: Temporal.PULSE_PREVIEW_LEN]
         s_pul, c_pul = xr.apply_ufunc(
             construct_pulse_response,
             g,

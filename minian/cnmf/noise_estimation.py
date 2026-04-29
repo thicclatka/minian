@@ -1,13 +1,10 @@
-"""CNMF decomposition and helpers (combined module).
-"""
+"""CNMF decomposition and helpers (combined module)."""
 
 import numpy as np
 import pyfftw.interfaces.numpy_fft as numpy_fft
 import xarray as xr
 from distributed import get_client
 from scipy.signal import welch
-
-
 
 
 def get_noise_fft(

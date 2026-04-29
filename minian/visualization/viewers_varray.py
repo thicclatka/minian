@@ -178,7 +178,9 @@ class VArrayViewer:
             except AttributeError:
                 self.sum_sub = self.summary
         ims, summ_hv = self._build_movie_summary()
-        self._pane_movie = pn.pane.HoloViews(ims, sizing_mode=PanelLayout.SIZING_STRETCH_WIDTH)
+        self._pane_movie = pn.pane.HoloViews(
+            ims, sizing_mode=PanelLayout.SIZING_STRETCH_WIDTH
+        )
         if summ_hv is None:
             self.pnplot = pn.Column(self._pane_movie)
         else:
@@ -302,9 +304,7 @@ class VArrayViewer:
             width=Player.WIDTH,
             height=Player.HEIGHT,
         )
-        wire_frame_player_index(
-            w_play, lambda i: self.strm_f.event(f=int(self._f[i]))
-        )
+        wire_frame_player_index(w_play, lambda i: self.strm_f.event(f=int(self._f[i])))
         w_box = pnwgt.Button(
             name="Update Mask",
             button_type="primary",

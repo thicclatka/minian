@@ -41,9 +41,7 @@ def _get_file(filename: str, version: str, dest: str):
             log.info("File %s installed.", local_path)
             break
     else:
-        log.warning(
-            "File %s not found with version %s, skipping.", filename, version
-        )
+        log.warning("File %s not found with version %s, skipping.", filename, version)
 
 
 def demo(version: str, dest: str):
