@@ -7,7 +7,7 @@ try:
     from IPython import get_ipython
 
     if get_ipython() is not None:
-        from .logger import configure_logging as _configure_logging
+        from .utilities import configure_logging as _configure_logging
 
         _configure_logging()
 except (ImportError, NameError):
@@ -15,8 +15,11 @@ except (ImportError, NameError):
 
 from ._version import get_package_version
 from .constants import MINIAN, MINIAN_CONFIG_FILENAME
-from .logger import configure_logging
-from .utilities import custom_arr_optimize, custom_delay_optimize
+from .utilities import (
+    configure_logging,
+    custom_arr_optimize,
+    custom_delay_optimize,
+)
 
 __all__ = [
     "__version__",

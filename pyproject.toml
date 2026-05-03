@@ -78,8 +78,9 @@ Documentation = "https://minian.readthedocs.io/"
 
 [project.scripts]
 minian-install = "minian.install:main"
-minian-pipeline = "minian.pipeline:main"
+minian-pipeline = "minian.pipelines.cnmf_process:main"
 minian-pipeline-defaults = "minian.config:main"
+minian-cross-reg = "minian.pipelines.cross_reg:main"
 
 [tool.maturin]
 manifest-path = "src-rust/Cargo.toml"
@@ -107,6 +108,18 @@ dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
     "pytest-rerunfailures>=15.0",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # sk-video still imports deprecated scipy.misc (SciPy 2.0).
+    "ignore:scipy.misc is deprecated:DeprecationWarning",
+    # Binary wheels occasionally disagree on ndarray ABI vs NumPy headers.
+    "ignore:numpy.ndarray size changed:RuntimeWarning",
+    # SWIG-generated helpers from optional native deps (e.g. SimpleITK).
+    "ignore:builtin type SwigPyPacked has no __module__:DeprecationWarning",
+    "ignore:builtin type SwigPyObject has no __module__:DeprecationWarning",
+    "ignore:builtin type swigvarlink has no __module__:DeprecationWarning",
 ]
 
 [tool.mypy]

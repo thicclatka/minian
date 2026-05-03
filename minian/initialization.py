@@ -1,4 +1,3 @@
-import functools as fct
 import itertools as itt
 import logging
 import os
@@ -11,7 +10,7 @@ import numpy as np
 import pandas as pd
 import sparse
 import xarray as xr
-from scipy.ndimage.measurements import label
+from scipy.ndimage import label
 from scipy.sparse import csc_matrix
 from scipy.stats import kstest, zscore
 from skimage.morphology import disk

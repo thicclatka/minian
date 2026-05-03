@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from scipy import linalg
-from scipy.ndimage.measurements import center_of_mass
+from scipy.ndimage import center_of_mass
 from scipy.spatial import cKDTree
 
 log = logging.getLogger(__name__)

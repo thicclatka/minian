@@ -158,7 +158,7 @@ def _default_param_load_videos() -> Dict[str, Any]:
 class PipelineConfig:
     """Algorithm defaults for a headless driver or JSON export.
 
-    Video roots (``dpath``) are chosen by the driver; :mod:`minian.pipeline` merges
+    Video roots (``dpath``) are chosen by the driver; :mod:`minian.pipelines.cnmf_process` merges
     ``param_save_minian['dpath']`` at run time under the ``--data`` directory.
     Load from JSON with :func:`load_pipeline_config` or use these field defaults.
     """
@@ -262,7 +262,7 @@ class PipelineConfig:
     def algorithm_param_dicts(self) -> Dict[str, Dict[str, Any]]:
         """``param_*`` kwargs for CNMF stages, excluding ``param_save_minian`` (set per run).
 
-        Keys match what :mod:`minian.pipeline` passes to ``load_videos``, ``denoise``, etc.
+        Keys match what :mod:`minian.pipelines.cnmf_process` passes to ``load_videos``, ``denoise``, etc.
         """
         skip = frozenset({"param_save_minian"})
         return {

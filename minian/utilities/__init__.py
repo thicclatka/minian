@@ -24,11 +24,10 @@ from .dask_graph import (
     split_key,
     unique_keys,
 )
-from .local_compute import materialize_local
 from .datasets import (
+    load_avi_ffmpeg,
     load_avi_lazy,
     load_avi_lazy_framewise,
-    load_avi_ffmpeg,
     load_avi_perframe,
     load_tif_lazy,
     load_tif_perframe,
@@ -39,6 +38,15 @@ from .datasets import (
     update_meta,
     xrconcat_recursive,
 )
+from .local_compute import materialize_local
+from .logger import (
+    ANSIColor,
+    configure_logging,
+    format_wall_duration,
+    print_wall_elapsed,
+    print_wall_since,
+    wall_section,
+)
 
 __all__ = (
     "ANNOTATIONS",
@@ -46,10 +54,12 @@ __all__ = (
     "TaskAnnotation",
     "check_key",
     "check_pat",
+    "configure_logging",
     "custom_arr_optimize",
     "custom_delay_optimize",
     "custom_fused_keys_renamer",
     "factors",
+    "format_wall_duration",
     "get_chk",
     "get_chunksize",
     "get_keys_pat",
@@ -65,6 +75,8 @@ __all__ = (
     "load_videos",
     "materialize_local",
     "med_baseline",
+    "print_wall_elapsed",
+    "print_wall_since",
     "open_minian",
     "open_minian_mf",
     "optimize_chunk",
@@ -75,5 +87,7 @@ __all__ = (
     "sps_lstsq",
     "unique_keys",
     "update_meta",
+    "ANSIColor",
+    "wall_section",
     "xrconcat_recursive",
 )

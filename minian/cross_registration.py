@@ -22,7 +22,7 @@ def calculate_centroids(A: xr.DataArray, window: xr.DataArray) -> pd.DataFrame:
     A : xr.DataArray
         The input spatial footprints of cells.
     window : xr.DataArray
-        Boolean mask with dimensions "height" and "width". Only sptial
+        Boolean mask with dimensions "height" and "width". Only spatial
         footprints of cells within this window will be included in the result.
 
     Returns
@@ -61,7 +61,7 @@ def calculate_centroid_distance(
         Pairs of sessions within such groups (but not across groups) will be
         used for calculation. By default `["animal"]`.
     tile : tuple, optional
-        Size of the rolling window to constrain caculation, specified in pixels
+        Size of the rolling window to constrain calculation, specified in pixels
         and in the order ("height", "width"). By default `(50, 50)`.
 
     Returns
@@ -182,9 +182,7 @@ def pd_dist(A: pd.DataFrame, B: pd.DataFrame) -> pd.Series:
     dist : pd.Series
         Distance between centroid locations. Has same row index as `A` and `B`.
     """
-    return np.sqrt(
-        ((A[["height", "width"]] - B[["height", "width"]]) ** 2).sum("columns")
-    )
+    return np.sqrt(((A[["height", "width"]] - B[["height", "width"]]) ** 2).sum(axis=1))
 
 
 def cartesian(*args: Iterable) -> np.ndarray:
@@ -545,7 +543,7 @@ def fill_mapping(mappings: pd.DataFrame, cents: pd.DataFrame) -> pd.DataFrame:
     This function takes all cells in `cents` and check to see if they appear in
     any rows in `mappings`. If a cell is not involved in any mappings, then a
     row will be appended to `mappings` with the cell's "unit_id" in the session
-    column contatining the cell and `NaN` in all other "session" columns.
+    column containing the cell and `NaN` in all other "session" columns.
 
     Parameters
     ----------

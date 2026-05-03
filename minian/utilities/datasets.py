@@ -7,25 +7,25 @@ import os
 import re
 import shutil
 import warnings
+from collections.abc import Hashable
 from copy import deepcopy
 from os import listdir
 from os.path import isdir, isfile
 from os.path import join as pjoin
 from pathlib import Path
-from collections.abc import Hashable
 from typing import Any, Callable, List, Literal, Optional, Tuple, Union, cast
 from uuid import uuid4
 
 import cv2
 import dask as da
 import dask.array as darr
-from dask.array.core import Array as DaskArray
 import ffmpeg
 import numpy as np
 import pandas as pd
 import rechunker
 import xarray as xr
 import zarr as zr
+from dask.array.core import Array as DaskArray
 from dask.delayed import optimize as default_delay_optimize
 from natsort import natsorted
 from tifffile import TiffFile, imread
@@ -50,7 +50,7 @@ _ZARR_CODEC_MAX_CHUNK_NBYTES = 1500 * 1024 * 1024
 def _eager_load_dask_mapping(
     scheduler: Literal["threads", "synchronous"],
 ) -> dict[str, Any]:
-    """Single mapping for :func:`dask.config.set` (stubs mispick ``set`` overloads on ``**``)."""
+    """Single mapping for :func:`dask.config.set` (avoids mypy ``**`` / overload confusion)."""
     return {
         "scheduler": scheduler,
         "array_optimize": darr.optimization.optimize,
@@ -983,11 +983,11 @@ def xrconcat_recursive(var: Union[dict, list], dims: List[str]) -> xr.Dataset:
             v.index = v.index.droplevel(dims[0])
             xarr = xrconcat_recursive(v.to_dict(), dims[1:])
             xr_ls.append(xarr)
-        return xr.concat(xr_ls, dim=dims[0])
+        return xr.concat(xr_ls, dim=dims[0], join="outer")
     else:
         if type(var) is dict:
             var = list(var.values())
-        return xr.concat(var, dim=dims[0])
+        return xr.concat(var, dim=dims[0], join="outer")
 
 
 def update_meta(dpath, pattern=r"^minian\.nc$", meta_dict=None, backend="netcdf"):

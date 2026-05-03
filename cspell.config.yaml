@@ -19,6 +19,7 @@ words:
   - beautifulsoup
   - binarizing
   - blas
+  - Blosc
   - bokeh
   - bseg
   - bspline
@@ -66,8 +67,10 @@ words:
   - ecos
   - edgelist
   - eigvals
+  - elems
   - epath
   - errorlevel
+  - etype
   - exitfirst
   - fhist
   - fidx
@@ -75,6 +78,8 @@ words:
   - flist
   - fmread
   - fnames
+  - framewise
+  - frombuffer
   - funcs
   - gaussians
   - Gaussians
@@ -91,6 +96,7 @@ words:
   - hvobjs
   - hvres
   - hvsum
+  - icol
   - idxs
   - iheight
   - imdict
@@ -102,6 +108,7 @@ words:
   - ipynb
   - iseg
   - isel
+  - itemsize
   - ivar
   - iwidth
   - Jaccard
@@ -128,6 +135,8 @@ words:
   - medpy
   - metas
   - minian
+  - minidx
+  - minidxs
   - Miniscope
   - mkdocs
   - moph
@@ -165,6 +174,7 @@ words:
   - outpath
   - outputdict
   - ovly
+  - pathlist
   - perframe
   - perpx
   - perseed
@@ -189,10 +199,12 @@ words:
   - pypackages
   - pytype
   - realfft
+  - rechk
   - rechunk
   - rechunked
   - rechunker
   - rechunking
+  - rechunks
   - refelect
   - regrid
   - renamer
@@ -231,6 +243,7 @@ words:
   - stackups
   - statsmodels
   - strm
+  - subg
   - subsetting
   - subviews
   - summ

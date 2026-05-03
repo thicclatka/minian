@@ -5,7 +5,7 @@ import os
 import requests
 
 from ._version import get_package_version
-from .logger import configure_logging
+from .utilities import configure_logging
 
 log = logging.getLogger(__name__)
 
