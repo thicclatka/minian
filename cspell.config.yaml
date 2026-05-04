@@ -17,6 +17,7 @@ words:
   - atleast
   - autochunking
   - autocovariances
+  - autouse
   - beautifulsoup
   - binarizing
   - blas
@@ -46,6 +47,7 @@ words:
   - coorandinates
   - crds
   - csize
+  - curdoc
   - curmap
   - cvxpy
   - darr
@@ -217,6 +219,7 @@ words:
   - refelect
   - regrid
   - renamer
+  - reqs
   - rerunfailures
   - rfft
   - ropeproject
@@ -234,6 +237,7 @@ words:
   - showuma
   - simpleitk
   - sitk
+  - skey
   - skimage
   - skvideo
   - Smirnov
@@ -270,6 +274,7 @@ words:
   - toeplitz
   - topdown
   - tophat
+  - tril
   - triu
   - ufunc
   - uids
@@ -304,6 +309,7 @@ words:
   - xrconcat
   - xyrange
   - YLABEL
+  - Ymask
   - zstore
 ignoreWords:
   - comput

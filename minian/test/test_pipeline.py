@@ -24,7 +24,7 @@ from minian.pipelines.cnmf_process import (
     main,
     parse_pipeline_argv,
 )
-from minian.utilities import ensure_ffmpeg, load_videos
+from minian.utilities import ensure_ffmpeg, load_videos, require_existing_dirs
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEMO_MOVIES = _REPO_ROOT / "demo_movies"
@@ -163,3 +163,17 @@ def test_ensure_ffmpeg_smoke() -> None:
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
         pytest.skip("ffmpeg and ffprobe required on PATH for video tests")
     ensure_ffmpeg()
+
+
+def test_require_existing_dirs_passes_for_existing_dirs(tmp_path: Path) -> None:
+    a = tmp_path / "a"
+    b = tmp_path / "b"
+    a.mkdir()
+    b.mkdir()
+    require_existing_dirs({"first": str(a), "second": str(b)})
+
+
+def test_require_existing_dirs_raises_with_label(tmp_path: Path) -> None:
+    missing = str(tmp_path / "does_not_exist")
+    with pytest.raises(FileNotFoundError, match="Missing mylabel"):
+        require_existing_dirs({"mylabel": missing}, hint="create it first.")

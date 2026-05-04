@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Headless minian CNMF process: preprocessing, motion correction, and CNMF (Dask LocalCluster).
 
-Run as ``python -m minian.pipelines.cnmf_process``, ``python -m minian.pipeline``
-(legacy alias), or the ``minian-pipeline`` console script (``--data`` / ``-d`` default: ``.``).
+Run as ``python -m minian.pipelines.cnmf_process`` or via the ``minian-pipeline``
+console script (``--data`` / ``-d`` default: ``.``).
 """
 
 from __future__ import annotations
@@ -28,11 +28,7 @@ from minian.cnmf import (
     update_temporal,
 )
 from minian.config import (
-    PipelineEnv,
     build_pipeline_effective_record,
-    dask_chunk_target_mb,
-    dask_threads_per_worker,
-    dask_worker_memory_limit,
     load_pipeline_config,
     pipeline_config_to_jsonable,
     resolve_pipeline_config_candidate,
@@ -227,9 +223,8 @@ def _start_cluster(
         f"Started Dask LocalCluster at {cluster.scheduler.address!r}\n"
         f"  n_workers={n_workers}, memory_limit={worker_memory_limit!r}, "
         f"threads_per_worker={threads_per_worker}, chunk_target_mb={chunk_target_mb}\n"
-        f"  ({PipelineEnv.MINIAN_NWORKERS} / {PipelineEnv.MINIAN_WORKER_CPU_RATIO} / "
-        f"{PipelineEnv.MINIAN_WORKER_MEMORY} / {PipelineEnv.MINIAN_THREADS_PER_WORKER} / "
-        f"{PipelineEnv.MINIAN_CHUNK_MB})\n"
+        f"  (cluster sizing from {MINIAN_CONFIG_FILENAME}: n_workers, worker_cpu_ratio, "
+        f"dask_worker_memory, dask_threads_per_worker, dask_chunk_target_mb)\n"
         f"  dashboard {client.dashboard_link!r}"
     )
     return client, cluster
@@ -265,8 +260,8 @@ def parse_pipeline_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         dest="worker_cpu_ratio",
         metavar="RATIO",
         help=(
-            "When MINIAN_NWORKERS is unset: fraction of (logical CPUs − reserve) used "
-            "as LocalCluster n_workers. If omitted, use MINIAN_WORKER_CPU_RATIO env or 2/3."
+            "When pipeline JSON leaves n_workers null: fraction of (logical CPUs − reserve) "
+            "used as LocalCluster n_workers. If omitted, use JSON worker_cpu_ratio or default 2/3."
         ),
     )
     return ap.parse_args(argv)
@@ -313,9 +308,9 @@ def run_pipeline(
     subset = dict(cfg.subset)
     subset_mc = cfg.subset_mc
     n_workers = cfg.resolved_n_workers()
-    worker_memory_limit = dask_worker_memory_limit()
-    threads_per_worker = dask_threads_per_worker()
-    chunk_target_mb = dask_chunk_target_mb()
+    worker_memory_limit = cfg.dask_worker_memory
+    threads_per_worker = cfg.dask_threads_per_worker
+    chunk_target_mb = cfg.dask_chunk_target_mb
 
     save_kw = dict(cfg.param_save_minian)
     save_kw["dpath"] = minian_folder_under(dpath)
@@ -424,7 +419,7 @@ def run_pipeline(
             seeds = seeds_init(Y_fm_chk, **params["param_seeds_init"])
 
         with wall_section(WALL_PREFIX, "pnr_refine", color=ANSIColor.BRIGHT_RED):
-            seeds, pnr, gmm = pnr_refine(Y_hw_chk, seeds, **params["param_pnr_refine"])
+            seeds, _, _ = pnr_refine(Y_hw_chk, seeds, **params["param_pnr_refine"])
 
         with wall_section(WALL_PREFIX, "ks_refine", color=ANSIColor.BRIGHT_RED):
             seeds = ks_refine(Y_hw_chk, seeds, **params["param_ks_refine"])

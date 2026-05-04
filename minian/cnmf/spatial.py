@@ -14,6 +14,7 @@ import zarr
 from skimage import morphology as moph
 from sklearn.linear_model import LassoLars
 
+from ..config import get_active_pipeline_config
 from ..utilities import (
     rechunk_like,
     save_minian,
@@ -55,7 +56,9 @@ def update_spatial(
     specified range. Finally, the temporal dynamic of cells `C` can either be
     load in memory before the update or lazy-loaded during the update. Note that
     if `in_memory` is `False`, then `C` must be stored under the intermediate
-    folder specified as environment variable `MINIAN_INTERMEDIATE`.
+    Intermediate Zarr root from :attr:`PipelineConfig.intpath <minian.config.PipelineConfig.intpath>`
+    on the active config (:func:`~minian.config.get_active_pipeline_config`), set via
+    :meth:`~minian.config.PipelineConfig.apply_environment`.
 
     Parameters
     ----------
@@ -118,7 +121,7 @@ def update_spatial(
     (matching the original NNLS / Lasso form in the citation). Larger
     ``sparse_penal`` yields sparser footprints.
     """
-    intpath = os.environ["MINIAN_INTERMEDIATE"]
+    intpath = get_active_pipeline_config().intpath
     if in_memory:
         C_store = C.compute().values
     else:

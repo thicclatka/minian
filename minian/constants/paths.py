@@ -1,17 +1,8 @@
-"""Shared literals for dataset folder names and exported filenames."""
+"""Dataset folder names and conventional path helpers."""
 
 from __future__ import annotations
 
 import os.path
-
-__all__ = [
-    "MINIAN",
-    "MINIAN_CONFIG_FILENAME",
-    "MINIAN_CONFIG_EFFECTIVE_FILENAME",
-    "MINIAN_INTERMEDIATE",
-    "minian_folder_under",
-    "get_minian_intermediate_path",
-]
 
 MINIAN = "minian"
 MINIAN_CONFIG_FILENAME = f"{MINIAN}_config.json"

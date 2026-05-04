@@ -2,7 +2,7 @@ Contributing to MiniAn
 ======================
 
 We'd love feedback and contribution from the community!
-:ref:`Fork and clone MiniAn from source <start_guide/install:Install from source>`, make you changes and submit a PR!
+:ref:`Fork and clone MiniAn from source <start_guide/install:Install from source>`, make your changes and submit a PR!
 Below are some book-keeping notes.
 
 Commit Messages
@@ -16,9 +16,23 @@ All development should be done on separate branches and squash-merge to `master`
 Code Style
 ----------
 
-MiniAn use the `black coding style <https://black.readthedocs.io/en/stable/the_black_code_style.html>`_.
-We also use a github action to enforce the style.
-So watch out for automatic commits and avoid headache in confilicting history.
+MiniAn follows the `Black code style <https://black.readthedocs.io/en/stable/the_black_code_style.html>`_.
+Formatting is enforced with **`pre-commit`**, which runs Black on ``minian/`` (see ``.pre-commit-config.yaml`` at the repo root). CI runs the same hooks, so pull requests fail if anything under ``minian/`` is not Black-compliant.
+
+**One-time setup** (from a clone, after installing dev dependencies):
+
+.. code-block:: console
+
+    uv sync --group dev
+    uv run pre-commit install
+
+That registers Git hooks so Black runs on staged files when you commit. To format or re-check the whole tree without committing:
+
+.. code-block:: console
+
+    uv run pre-commit run --all-files
+
+If you use `mise <https://mise.jdx.dev/>`_ with this repository, ``mise run format`` runs the same ``pre-commit`` invocation across the repo.
 
 Creating release
 ----------------

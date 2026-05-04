@@ -33,7 +33,7 @@ MiniAn is an analysis pipeline and visualization tool inspired by both [CaImAn](
    - `uv run minian-install --notebooks --dest ./artifacts`
    - `uv run minian-install --demo --dest ./artifacts`
 1. **Headless pipelines** (after `uv sync`; `-d` / `--data` defaults to the current directory for both CLIs—use e.g. `-d ./demo_movies` for CNMF on the demo AVIs or `-d ./demo_data` for cross-reg on the demo sessions):
-   - CNMF pipeline: `uv run minian-pipeline --help` · `uv run minian-pipeline` or `uv run python -m minian.pipelines.cnmf_process` (legacy: `python -m minian.pipeline`)
+   - CNMF pipeline: `uv run minian-pipeline --help` · `uv run minian-pipeline` or `uv run python -m minian.pipelines.cnmf_process`
    - Cross-registration: `uv run minian-cross-reg --help` · `uv run minian-cross-reg` or `uv run python -m minian.pipelines.cross_reg`
 1. **Notebook flow**: `uv run jupyter notebook` then open `pipeline.ipynb` (or the path where you installed notebooks with `--dest`).
 

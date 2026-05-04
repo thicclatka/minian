@@ -24,7 +24,7 @@ Optional dependency groups:
 
     uv sync --group dev
 
-adds tools used in CI (pytest, Black, maturin, mypy, etc.). To include **Sphinx** and documentation extras as well:
+adds developer tooling used in CI (pytest, pre-commit for Black on ``minian/``, maturin, mypy, etc.). To include **Sphinx** and documentation extras as well:
 
 .. code-block:: console
 

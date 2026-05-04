@@ -23,7 +23,7 @@ Headless CNMF pipeline with a local Dask cluster (``minian.pipelines.cnmf_proces
      -c PATH, --config PATH
                            Pipeline JSON (see PipelineConfig). Default: minian_config.json in the current working directory if present; else built-in defaults (those defaults are written to <data>/minian_config.json at run start).
      --worker-cpu-ratio RATIO
-                           When MINIAN_NWORKERS is unset: fraction of (logical CPUs − reserve) used as LocalCluster n_workers. If omitted, use MINIAN_WORKER_CPU_RATIO env or 2/3.
+                           When pipeline JSON leaves n_workers null: fraction of (logical CPUs − reserve) used as LocalCluster n_workers. If omitted, use JSON worker_cpu_ratio or default 2/3.
 
 ``minian-cross-reg``
 --------------------
@@ -65,7 +65,7 @@ Writes the default :class:`minian.config.PipelineConfig` as JSON (``minian.confi
      --stdout              Print JSON to stdout instead of writing the file.
      --resolve-paths       Use absolute intpath and param_save_minian['dpath'] (if set) before export.
      --include-resolved-workers
-                           Add resolved_n_workers (env MINIAN_NWORKERS or CPU-based).
+                           Add resolved_n_workers and resolved_worker_cpu_ratio (CPU-based from JSON fields).
 
 ``minian-install``
 ------------------
@@ -84,19 +84,16 @@ Downloads notebooks and/or demo assets from GitHub into ``--dest`` (``minian.ins
      -v V                Git repo branch or tag name, default 2.0.0
      --dest DIR, -d DIR  Directory to download into (default: current working directory)
 
-Pipeline environment variables
--------------------------------
+Pipeline configuration and environment
+----------------------------------------
 
-These are read by the headless CNMF driver (``minian-pipeline``), tests, or logging—not by ``minian-cross-reg``, which only uses CLI flags. Defaults and parsing live in :mod:`minian.config`.
+Dask ``LocalCluster`` sizing (``n_workers``, ``worker_cpu_ratio``, ``reserve_cores_for_os``, ``dask_worker_memory``, ``dask_threads_per_worker``, ``dask_chunk_target_mb``) is read from **pipeline JSON** (:class:`~minian.config.PipelineConfig`), not from ``MINIAN_*`` environment variables. Edit ``minian_config.json`` next to your data (or pass ``-c`` / ``--config``) and call :meth:`~minian.config.PipelineConfig.apply_environment` in notebooks the same way the CLI driver does.
 
-* **MINIAN_NWORKERS** — If set to a positive integer, used as ``LocalCluster(n_workers=...)``. When unset, worker count is derived from CPUs (see **MINIAN_WORKER_CPU_RATIO**); that path requires the ``minian_rs`` extension.
-* **MINIAN_WORKER_CPU_RATIO** — Float in ``(0, 1]``, used only when **MINIAN_NWORKERS** is unset. Clamped to a valid range; if unset or invalid, defaults to ``2/3``.
-* **MINIAN_WORKER_MEMORY** — Dask worker memory limit string (default ``2GB``).
-* **MINIAN_THREADS_PER_WORKER** — Integer threads per Dask worker (default ``2``).
-* **MINIAN_CHUNK_MB** — Target chunk size in megabytes for pipeline I/O (default ``200``).
+CLI and logging still honor:
+
 * **MINIAN_LOG_LEVEL** — Log level for CLI entrypoints that configure logging (default ``INFO``).
 * **NO_COLOR** — When non-empty, log output skips ANSI colors on terminals (`no-color.org <https://no-color.org/>`_).
 
-During a pipeline run, **MINIAN_INTERMEDIATE** is set to the configured intermediate directory (under ``--data`` by default); notebook flows may set it explicitly. You normally do not need to export it yourself.
+The driver registers the configured intermediate directory (under ``--data`` by default) via :meth:`minian.config.PipelineConfig.apply_environment` together with the fields above.
 
 See also :doc:`install`, :doc:`../pipeline/index`, and :doc:`../cross_reg/index`.

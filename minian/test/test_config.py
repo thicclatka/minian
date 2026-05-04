@@ -3,6 +3,7 @@
 import dataclasses
 import json
 import os
+from collections.abc import Iterator
 
 import pytest
 
@@ -10,9 +11,11 @@ from minian.config import (
     PipelineConfig,
     PipelineEnv,
     build_pipeline_effective_record,
+    clear_active_pipeline_config,
     dask_chunk_target_mb,
     dask_threads_per_worker,
     dask_worker_memory_limit,
+    get_active_pipeline_config,
     load_pipeline_config,
     pipeline_config_to_jsonable,
     resolve_n_workers,
@@ -25,11 +28,27 @@ from minian.constants import (
 )
 
 
-def test_resolve_n_workers_respects_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("MINIAN_NWORKERS", "8")
-    assert resolve_n_workers() == 8
-    monkeypatch.setenv("MINIAN_NWORKERS", "1")
-    assert resolve_n_workers() == 1
+@pytest.fixture(autouse=True)
+def reset_active_pipeline_config() -> (
+    Iterator[None]
+):  # pyright: ignore[reportUnusedFunction]
+    """Autouse: clear active :class:`~minian.config.PipelineConfig` after each test."""
+    yield
+    clear_active_pipeline_config()
+
+
+def test_get_active_pipeline_config_raises_when_unset() -> None:
+    clear_active_pipeline_config()
+    with pytest.raises(RuntimeError, match="No active pipeline"):
+        get_active_pipeline_config()
+
+
+def test_resolve_n_workers_ignores_obsolete_minian_n_workers_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("minian.minian_rs")
+    monkeypatch.setenv("MINIAN_NWORKERS", "99")
+    assert resolve_n_workers(reserve=1) != 99
 
 
 def test_resolve_n_workers_reserve_forces_floor(
@@ -62,35 +81,34 @@ def test_get_minian_intermediate_path(
     assert got == os.path.join(os.path.abspath(parent), MINIAN_INTERMEDIATE)
 
 
-def test_resolve_n_workers_invalid_env_fallback(
+def test_resolve_n_workers_invalid_explicit_ratio_uses_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     pytest.importorskip("minian.minian_rs")
-    monkeypatch.setenv("MINIAN_NWORKERS", "not-a-number")
-    n = resolve_n_workers(reserve=0)
+    n = resolve_n_workers(reserve=0, worker_cpu_ratio=float("nan"))
     assert n >= 1
 
 
-def test_resolve_n_workers_explicit_ratio_overrides_env(
+def test_resolve_n_workers_explicit_ratio(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     pytest.importorskip("minian.minian_rs")
     from minian.minian_rs import thread_allocation
 
-    monkeypatch.delenv("MINIAN_NWORKERS", raising=False)
     monkeypatch.setenv("MINIAN_WORKER_CPU_RATIO", "0.25")
     want = int(thread_allocation(1, 1.0 / 3.0).cluster_workers)
     assert resolve_n_workers(reserve=1, worker_cpu_ratio=1.0 / 3.0) == want
 
 
-def test_resolve_n_workers_env_ratio(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_n_workers_default_ratio_ignores_worker_cpu_ratio_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     pytest.importorskip("minian.minian_rs")
     from minian.minian_rs import thread_allocation
 
-    monkeypatch.delenv("MINIAN_NWORKERS", raising=False)
     monkeypatch.setenv("MINIAN_WORKER_CPU_RATIO", "0.5")
     assert resolve_n_workers(reserve=1) == int(
-        thread_allocation(1, 0.5).cluster_workers
+        thread_allocation(1, PipelineEnv.DEFAULT_WORKER_CPU_RATIO).cluster_workers
     )
 
 
@@ -180,7 +198,7 @@ def test_apply_environment_uses_thread_env(
         },
     )
     cfg.apply_environment()
-    assert env["MINIAN_INTERMEDIATE"] == "/tmp/im"
+    assert get_active_pipeline_config().intpath == os.path.abspath("/tmp/im")
     assert env["OMP_NUM_THREADS"] == "3"
     assert env["MKL_NUM_THREADS"] == "2"
     assert env["OPENBLAS_NUM_THREADS"] == "2"
@@ -234,26 +252,28 @@ def test_dask_worker_memory_limit_default(
     assert dask_worker_memory_limit() == PipelineEnv.DEFAULT_DASK_WORKER_MEMORY
 
 
-def test_dask_worker_memory_limit_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv(PipelineEnv.MINIAN_WORKER_MEMORY, " 4GB ")
+def test_dask_worker_memory_limit_from_active_pipeline(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    cfg = PipelineConfig(dask_worker_memory=" 4GB ")
+    cfg.apply_environment()
     assert dask_worker_memory_limit() == "4GB"
 
 
-def test_dask_threads_per_worker(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(PipelineEnv.MINIAN_THREADS_PER_WORKER, raising=False)
+def test_dask_threads_per_worker(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
     assert dask_threads_per_worker() == PipelineEnv.DEFAULT_DASK_THREADS_PER_WORKER
-    monkeypatch.setenv(PipelineEnv.MINIAN_THREADS_PER_WORKER, "4")
+    PipelineConfig(dask_threads_per_worker=4).apply_environment()
     assert dask_threads_per_worker() == 4
-    monkeypatch.setenv(PipelineEnv.MINIAN_THREADS_PER_WORKER, "0")
-    assert dask_threads_per_worker() == 1
 
 
-def test_dask_chunk_target_mb(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(PipelineEnv.MINIAN_CHUNK_MB, raising=False)
+def test_dask_chunk_target_mb(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
     assert dask_chunk_target_mb() == PipelineEnv.DEFAULT_DASK_CHUNK_TARGET_MB
-    monkeypatch.setenv(PipelineEnv.MINIAN_CHUNK_MB, "512")
+    PipelineConfig(dask_chunk_target_mb=512).apply_environment()
     assert dask_chunk_target_mb() == 512
-    monkeypatch.setenv(PipelineEnv.MINIAN_CHUNK_MB, "0")
+    PipelineConfig(dask_chunk_target_mb=0).apply_environment()
     assert dask_chunk_target_mb() == 1
 
 

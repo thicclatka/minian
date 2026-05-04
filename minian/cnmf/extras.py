@@ -4,7 +4,6 @@
 
 import functools as fct
 import logging
-import os
 import warnings
 from typing import Any, List, Optional, Tuple
 
@@ -16,6 +15,7 @@ import scipy.sparse
 import sparse
 import xarray as xr
 
+from ..config import get_active_pipeline_config
 from ..utilities import (
     custom_arr_optimize,
     custom_delay_optimize,
@@ -465,7 +465,7 @@ def update_temporal(
     `sparse_penal`. Higher value of :math:`\\alpha` will result in more sparse
     estimation of deconvolved spikes.
     """
-    intpath = os.environ["MINIAN_INTERMEDIATE"]
+    intpath = get_active_pipeline_config().intpath
     if YrA is None:
         if Y is None or b is None or f is None:
             raise TypeError("Y, b, and f are required when YrA is None")
@@ -716,7 +716,7 @@ def update_background(
         New estimation of the temporal activity of background. Has dimension
         "frame".
     """
-    intpath = os.environ["MINIAN_INTERMEDIATE"]
+    intpath = get_active_pipeline_config().intpath
     AtC = compute_AtC(A, C)
     Yb = (Y - AtC).clip(0)
     Yb = save_minian(Yb.rename("Yb"), intpath, overwrite=True)

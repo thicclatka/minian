@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 import warnings
-from collections.abc import Hashable
+from collections.abc import Hashable, Mapping
 from copy import deepcopy
 from os import listdir
 from os.path import isdir, isfile
@@ -30,8 +30,7 @@ from dask.delayed import optimize as default_delay_optimize
 from natsort import natsorted
 from tifffile import TiffFile, imread
 
-from .._ffmpeg_constants import RawGray
-from ..constants import MINIAN
+from ..constants import MINIAN, RawGray
 from .dask_graph import custom_arr_optimize
 from .ffmpeg_util import ensure_ffmpeg
 
@@ -602,6 +601,29 @@ def open_minian(
     if (not return_dict) and post_process:
         ds = post_process(ds, dpath)
     return ds
+
+
+def require_existing_dirs(
+    paths: Mapping[str, str],
+    *,
+    hint: str = "Run the processing pipeline first or correct the path.",
+) -> None:
+    """Raise :class:`FileNotFoundError` unless every path is an existing directory.
+
+    Typical use: confirm intermediate and merged Minian Zarr roots exist before
+    :func:`open_minian`.
+
+    Parameters
+    ----------
+    paths
+        Short label (for the error message) mapped to a directory path.
+    hint
+        Suffix appended to each ``FileNotFoundError`` message.
+    """
+    for label, p in paths.items():
+        ap = os.path.abspath(p)
+        if not isdir(ap):
+            raise FileNotFoundError(f"Missing {label}: {ap!r} — {hint}")
 
 
 def open_minian_mf(

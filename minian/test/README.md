@@ -29,7 +29,7 @@ With coverage (same idea as GitHub Actions):
 uv run pytest -v --color=yes --cov=minian --cov-report=term --pyargs minian
 ```
 
-Parallel worker count for tests that touch Dask can be capped with **`MINIAN_NWORKERS`** (CI sets it on macOS vs Linux).
+Dask worker count for the pipeline comes from **`minian_config.json`** (`n_workers` or CPU-derived defaults via `worker_cpu_ratio` / `reserve_cores_for_os`), not from shell environment variables.
 
 ## Layout
 

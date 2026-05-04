@@ -13,8 +13,7 @@ import skvideo.io
 import xarray as xr
 
 from ..cnmf import compute_AtC
-from ..constants import MINIAN
-from .._ffmpeg_constants import H264, RawGray, Uint8, VideoExport
+from ..constants import H264, MINIAN, RawGray, Uint8, VideoExport
 from ..utilities.ffmpeg_util import ensure_ffmpeg
 
 log = logging.getLogger(__name__)
@@ -79,7 +78,7 @@ def write_video(
         the full pixel depth range (RGB_MIN, RGB_MAX). By default `True`.
     options : dict, optional
         Optional output arguments passed to ``ffmpeg``. By default uses
-        :attr:`~minian._ffmpeg_constants.H264.OUTPUT_OPTIONS`.
+        :attr:`~minian.constants.H264.OUTPUT_OPTIONS`.
 
     Returns
     -------
@@ -210,7 +209,7 @@ def generate_videos(
         Desired name of the video (default basename ``minian.mp4`` from :data:`~minian.constants.MINIAN`).
     options : dict, optional
         Output options for ``ffmpeg``, passed directly to :func:`write_video`.
-        By default uses :attr:`~minian._ffmpeg_constants.H264.OUTPUT_OPTIONS`.
+        By default uses :attr:`~minian.constants.H264.OUTPUT_OPTIONS`.
 
     Returns
     -------

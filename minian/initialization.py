@@ -1,6 +1,5 @@
 import itertools as itt
 import logging
-import os
 from typing import Optional, Tuple, Union
 
 import cv2
@@ -18,6 +17,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import KDTree, radius_neighbors_graph
 
 from .cnmf import adj_corr, filt_fft, graph_optimize_corr, label_connected
+from .config import get_active_pipeline_config
 from .utilities import local_extreme, med_baseline, save_minian, sps_lstsq
 
 log = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ def seeds_init(
         integer showing how many chunks where the seed is considered a local
         maxima.
     """
-    int_path = os.environ["MINIAN_INTERMEDIATE"]
+    int_path = get_active_pipeline_config().intpath
     log.info("constructing chunks")
     idx_fm = varr.coords["frame"]
     nfm = len(idx_fm)

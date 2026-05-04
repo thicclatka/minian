@@ -6,6 +6,10 @@ rust = "1.95.0"
 description = "Rebuild and install minian_rs into the current env (maturin develop)"
 run = "uv run maturin develop --manifest-path src-rust/Cargo.toml"
 
+[tasks.lock-upgrade-sync]
+description = "Bump uv.lock to latest compatible versions, then uv sync (dev + docs)"
+run = "uv lock --upgrade && uv sync --group dev --extra docs"
+
 [tasks.mypy]
 description = "Type-check Python with mypy ([tool.mypy] in pyproject.toml)"
 run = "uv run mypy minian"

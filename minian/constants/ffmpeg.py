@@ -1,6 +1,4 @@
-"""Shared ffmpeg literals for raw pipe I/O, H.264 export, and video helpers."""
-
-from __future__ import annotations
+"""FFmpeg-related literals for raw pipe I/O, H.264 export, and video helpers."""
 
 
 class RawGray:
@@ -33,6 +31,3 @@ class VideoExport:
 
     STATS_REDUCE_FRAME_CHUNK_CAP = 32
     CONCAT_LIST_CHUNK = 256
-
-
-__all__ = ["H264", "RawGray", "Uint8", "VideoExport"]

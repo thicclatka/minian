@@ -56,8 +56,6 @@ jobs:
         run: uv run sphinx-build -M doctest docs/source docs/build
 
       - name: Run tests and collect coverage
-        env:
-          MINIAN_NWORKERS: ${{ runner.os == 'macOS' && '3' || '2' }}
         run: |
           mkdir -p artifact
           if [ -d img ]; then cp -R img artifact/; fi
