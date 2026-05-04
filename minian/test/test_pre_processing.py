@@ -1,9 +1,8 @@
 import pytest
 import numpy as np
-import holoviews as hv
 
 from ..utilities import load_videos
-from ..preprocessing import denoise, remove_background, stripe_correction
+from ..preprocessing import denoise, remove_background
 
 dpath = "./demo_movies"
 

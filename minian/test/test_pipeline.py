@@ -85,24 +85,21 @@ def test_spatial_chunks_full_frame() -> None:
 
 
 def test_pipeline_paths_match_run_pipeline_layout(tmp_path: Path) -> None:
-    """Same ``root`` / ``dpath`` / ``intpath`` / ``param_save_minian`` layout as :func:`run_pipeline` builds."""
+    """Same ``dpath`` / ``intpath`` / ``param_save_minian`` layout as :func:`run_pipeline` builds."""
     demo = tmp_path / "demo_movies"
     demo.mkdir()
     dpath = str(demo.resolve())
-    root = Path(dpath).parent
-    intpath = get_minian_intermediate_path(str(root))
+    intpath = get_minian_intermediate_path(dpath)
     save_kw: dict[str, Any] = {
         "meta_dict": {"session": -1, "animal": -2},
         "overwrite": True,
         "dpath": minian_folder_under(dpath),
     }
     paths = PipelinePaths(
-        root=root,
         dpath=dpath,
         intpath=intpath,
         param_save_minian=save_kw,
     )
-    assert paths.root == root
     assert paths.dpath == os.path.abspath(dpath)
     assert paths.intpath == intpath
     assert paths.param_save_minian["dpath"] == minian_folder_under(

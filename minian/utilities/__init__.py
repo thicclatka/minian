@@ -42,6 +42,7 @@ from .datasets import (
 from .local_compute import materialize_local
 from .logger import (
     ANSIColor,
+    configure_cli_logging,
     configure_logging,
     format_wall_duration,
     print_wall_elapsed,
@@ -56,6 +57,7 @@ __all__ = (
     "TaskAnnotation",
     "check_key",
     "check_pat",
+    "configure_cli_logging",
     "configure_logging",
     "custom_arr_optimize",
     "custom_delay_optimize",

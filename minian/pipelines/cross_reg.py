@@ -1,6 +1,7 @@
 """Headless cross-registration across sessions (Dask progress + wall timers).
 
-Run as ``python -m minian.pipelines.cross_reg`` or ``minian-cross-reg`` (``-d`` / ``--data`` defaults to ``.``).
+Run as ``python -m minian.pipelines.cross_reg`` or ``minian-cross-reg``
+(``-d`` / ``--data`` defaults to ``.``; ``--param-dist`` defaults to ``5`` pixels).
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from minian.motion_correction import apply_transform, estimate_motion
 from minian.utilities import open_minian_mf
 from minian.utilities.logger import (
     ANSIColor,
-    configure_logging,
+    configure_cli_logging,
     format_wall_duration,
     print_wall_elapsed,
     wall_section,
@@ -36,9 +37,24 @@ log = logging.getLogger(__name__)
 
 WALL_PREFIX = "[MINIAN CROSS-REG]"
 
+#: Default centroid-distance cutoff (pixels) for :func:`run_cross_reg` / CLI ``--param-dist``.
+DEFAULT_PARAM_DIST: int = 5
+
+
+class FileExtensions:
+    PKL = ".pkl"
+    NC = ".nc"
+
 
 def set_window(wnd):
     return wnd == wnd.min()
+
+
+def _positive_pixel_dist(value: str) -> int:
+    v = int(value)
+    if v < 1:
+        raise argparse.ArgumentTypeError("must be an integer >= 1")
+    return v
 
 
 def parse_cross_reg_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -59,24 +75,40 @@ def parse_cross_reg_argv(argv: Optional[List[str]] = None) -> argparse.Namespace
             'session1/minian.nc). Default: "."'
         ),
     )
+    ap.add_argument(
+        "--param-dist",
+        type=_positive_pixel_dist,
+        default=DEFAULT_PARAM_DIST,
+        metavar="PIXELS",
+        dest="param_dist",
+        help=(
+            "Keep only cell pairs whose centroid Euclidean distance (height/width "
+            f"coordinates) is strictly less than this value in pixels (default: {DEFAULT_PARAM_DIST})."
+        ),
+    )
     return ap.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> None:
-    configure_logging(os.getenv("MINIAN_LOG_LEVEL", "INFO"), force=True)
+    configure_cli_logging()
     t_total = time.perf_counter()
 
     args = parse_cross_reg_argv(argv)
     dpath = os.path.abspath(args.data)
     f_pattern = r"minian.nc$"
     id_dims = ["session"]
-
-    param_dist = 5
+    param_dist = args.param_dist
 
     pbar = ProgressBar(minimum=2)
     pbar.register()
 
-    log.info("cross-reg: dpath=%r pattern=%r id_dims=%s", dpath, f_pattern, id_dims)
+    log.info(
+        "cross-reg: dpath=%r pattern=%r id_dims=%s param_dist=%s",
+        dpath,
+        f_pattern,
+        id_dims,
+        param_dist,
+    )
 
     try:
         run_cross_reg(dpath, f_pattern, id_dims, param_dist)
@@ -170,9 +202,11 @@ def run_cross_reg(
         "persist outputs (pickle + netcdf)",
         color=ANSIColor.BRIGHT_CYAN,
     ):
-        mappings_meta_fill.to_pickle(os.path.join(dpath, "mappings.pkl"))
-        cents.to_pickle(os.path.join(dpath, "cents.pkl"))
-        shiftds.to_netcdf(os.path.join(dpath, "shiftds.nc"))
+        mappings_meta_fill.to_pickle(
+            os.path.join(dpath, f"mappings{FileExtensions.PKL}")
+        )
+        cents.to_pickle(os.path.join(dpath, f"cents{FileExtensions.PKL}"))
+        shiftds.to_netcdf(os.path.join(dpath, f"shiftds{FileExtensions.NC}"))
 
 
 if __name__ == "__main__":

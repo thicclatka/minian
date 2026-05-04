@@ -14,7 +14,7 @@ except (ImportError, NameError):
     pass
 
 from ._version import get_package_version
-from .constants import MINIAN, MINIAN_CONFIG_FILENAME
+from .constants import MINIAN, MINIAN_CONFIG_EFFECTIVE_FILENAME, MINIAN_CONFIG_FILENAME
 from .utilities import (
     configure_logging,
     custom_arr_optimize,
@@ -24,6 +24,7 @@ from .utilities import (
 __all__ = [
     "__version__",
     "MINIAN",
+    "MINIAN_CONFIG_EFFECTIVE_FILENAME",
     "MINIAN_CONFIG_FILENAME",
     "configure_logging",
     "custom_arr_optimize",

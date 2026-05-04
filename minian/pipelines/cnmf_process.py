@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import json
 import logging
 import os
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
 import xarray as xr
@@ -27,8 +27,18 @@ from minian.cnmf import (
     update_spatial,
     update_temporal,
 )
-from minian.config import load_pipeline_config
+from minian.config import (
+    PipelineEnv,
+    build_pipeline_effective_record,
+    dask_chunk_target_mb,
+    dask_threads_per_worker,
+    dask_worker_memory_limit,
+    load_pipeline_config,
+    pipeline_config_to_jsonable,
+    resolve_pipeline_config_candidate,
+)
 from minian.constants import (
+    MINIAN_CONFIG_EFFECTIVE_FILENAME,
     MINIAN_CONFIG_FILENAME,
     get_minian_intermediate_path,
     minian_folder_under,
@@ -45,7 +55,6 @@ from minian.motion_correction import apply_transform, estimate_motion
 from minian.preprocessing import denoise, remove_background
 from minian.utilities import (
     TaskAnnotation,
-    configure_logging,
     ensure_ffmpeg,
     get_optimal_chk,
     load_videos,
@@ -53,6 +62,7 @@ from minian.utilities import (
 )
 from minian.utilities.logger import (
     ANSIColor,
+    configure_cli_logging,
     format_wall_duration,
     print_wall_elapsed,
     wall_section,
@@ -68,7 +78,6 @@ WALL_PREFIX = "[MINIAN PIPELINE]"
 class PipelinePaths:
     """Resolved filesystem locations for the demo pipeline."""
 
-    root: Path
     dpath: str
     intpath: str
     param_save_minian: dict[str, Any]
@@ -218,8 +227,9 @@ def _start_cluster(
         f"Started Dask LocalCluster at {cluster.scheduler.address!r}\n"
         f"  n_workers={n_workers}, memory_limit={worker_memory_limit!r}, "
         f"threads_per_worker={threads_per_worker}, chunk_target_mb={chunk_target_mb}\n"
-        f"  (MINIAN_NWORKERS / MINIAN_WORKER_CPU_RATIO / MINIAN_WORKER_MEMORY / "
-        f"MINIAN_THREADS_PER_WORKER / MINIAN_CHUNK_MB)\n"
+        f"  ({PipelineEnv.MINIAN_NWORKERS} / {PipelineEnv.MINIAN_WORKER_CPU_RATIO} / "
+        f"{PipelineEnv.MINIAN_WORKER_MEMORY} / {PipelineEnv.MINIAN_THREADS_PER_WORKER} / "
+        f"{PipelineEnv.MINIAN_CHUNK_MB})\n"
         f"  dashboard {client.dashboard_link!r}"
     )
     return client, cluster
@@ -244,7 +254,8 @@ def parse_pipeline_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         dest="config",
         help=(
             f"Pipeline JSON (see PipelineConfig). Default: {MINIAN_CONFIG_FILENAME} "
-            "in the current working directory if present; else built-in defaults."
+            "in the current working directory if present; else built-in defaults "
+            f"(those defaults are written to <data>/{MINIAN_CONFIG_FILENAME} at run start)."
         ),
     )
     ap.add_argument(
@@ -268,33 +279,47 @@ def run_pipeline(
     config_path: Optional[str] = None,
 ) -> None:
     """Execute the demo CNMF pipeline on ``data_dir`` (absolute or relative path)."""
-    configure_logging(os.getenv("MINIAN_LOG_LEVEL", "INFO"), force=True)
+    configure_cli_logging()
     ensure_ffmpeg()
     t_pipeline_total = time.perf_counter()
 
     dpath = os.path.abspath(data_dir)
-    root = Path(dpath).parent
-    print(f"root: {root}")
     print(f"dpath: {dpath}")
 
-    intpath = get_minian_intermediate_path(str(root))
+    intpath = get_minian_intermediate_path(dpath)
+    candidate = resolve_pipeline_config_candidate(config_path, cwd=os.getcwd())
     cfg = load_pipeline_config(path=config_path)
     cfg = dataclasses.replace(cfg, intpath=intpath)
     if worker_cpu_ratio is not None:
         cfg = dataclasses.replace(cfg, worker_cpu_ratio=worker_cpu_ratio)
+    if not os.path.isfile(candidate):
+        export_path = os.path.join(dpath, MINIAN_CONFIG_FILENAME)
+        os.makedirs(dpath, exist_ok=True)
+        payload = pipeline_config_to_jsonable(
+            cfg,
+            resolve_paths=True,
+            include_resolved_workers=False,
+        )
+        with open(export_path, "w", encoding="utf-8") as out_fp:
+            out_fp.write(json.dumps(payload, indent=2))
+        log.info(
+            "Wrote %s to %s (no pipeline config JSON at candidate path %s)",
+            MINIAN_CONFIG_FILENAME,
+            export_path,
+            candidate,
+        )
     cfg.apply_environment()
 
     subset = dict(cfg.subset)
     subset_mc = cfg.subset_mc
     n_workers = cfg.resolved_n_workers()
-    worker_memory_limit = os.getenv("MINIAN_WORKER_MEMORY", "2GB")
-    threads_per_worker = int(os.getenv("MINIAN_THREADS_PER_WORKER", "2"))
-    chunk_target_mb = int(os.getenv("MINIAN_CHUNK_MB", "200"))
+    worker_memory_limit = dask_worker_memory_limit()
+    threads_per_worker = dask_threads_per_worker()
+    chunk_target_mb = dask_chunk_target_mb()
 
     save_kw = dict(cfg.param_save_minian)
     save_kw["dpath"] = minian_folder_under(dpath)
     paths = PipelinePaths(
-        root=root,
         dpath=dpath,
         intpath=intpath,
         param_save_minian=save_kw,
@@ -386,7 +411,9 @@ def run_pipeline(
             "write_video minian_mc.mp4 (before / after MC)",
             color=ANSIColor.BRIGHT_RED,
         ):
-            vid_arr = xr.concat([varr_ref, Y_fm_chk], "width").chunk({"width": -1})
+            vid_arr = xr.concat([varr_ref, Y_fm_chk], "width", join="outer").chunk(
+                {"width": -1}
+            )
             write_video(vid_arr, "minian_mc.mp4", paths.dpath)
 
         max_proj = save_minian(
@@ -640,6 +667,19 @@ def run_pipeline(
             b0 = save_minian(b0.rename("b0"), **paths.param_save_minian)
             b = save_minian(b.rename("b"), **paths.param_save_minian)
             f = save_minian(f.rename("f"), **paths.param_save_minian)
+
+        effective_path = os.path.join(dpath, MINIAN_CONFIG_EFFECTIVE_FILENAME)
+        effective_payload = build_pipeline_effective_record(
+            cfg,
+            n_workers=n_workers,
+            worker_memory_limit=worker_memory_limit,
+            threads_per_worker=threads_per_worker,
+            chunk_target_mb=chunk_target_mb,
+            cli_worker_cpu_ratio=worker_cpu_ratio,
+        )
+        with open(effective_path, "w", encoding="utf-8") as out_fp:
+            out_fp.write(json.dumps(effective_payload, indent=2, sort_keys=True))
+        log.info("Wrote effective pipeline record to %s", effective_path)
     finally:
         client.close()
         cluster.close()

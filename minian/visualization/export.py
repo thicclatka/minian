@@ -241,10 +241,11 @@ def generate_videos(
     log.info("writing videos")
     vid = xr.concat(
         [
-            xr.concat([varr, Y], "width", coords="minimal"),
-            xr.concat([res, AC], "width", coords="minimal"),
+            xr.concat([varr, Y], "width", coords="minimal", join="outer"),
+            xr.concat([res, AC], "width", coords="minimal", join="outer"),
         ],
         "height",
         coords="minimal",
+        join="outer",
     )
     return write_video(vid, vname, vpath, norm=False, options=options)

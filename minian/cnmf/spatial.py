@@ -147,7 +147,7 @@ def update_spatial(
         b_in = rechunk_like(b > 0, Y).assign_coords(unit_id=-1).expand_dims("unit_id")
         b_in.data = b_in.data.map_blocks(sparse.COO)
         b_in = b_in.compute()
-        sub = xr.concat([sub, b_in], "unit_id")
+        sub = xr.concat([sub, b_in], "unit_id", join="outer")
         f_in = f.compute().data
     else:
         f_in = None

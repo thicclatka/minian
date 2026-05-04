@@ -1,22 +1,29 @@
-"""Pipeline defaults: paths, Dask ``n_workers``, and BLAS thread caps.
+"""Pipeline defaults: paths, Dask cluster sizing, and BLAS thread caps.
 
 CPU-based ``n_workers`` defaults come from ``minian.minian_rs`` — see
 :func:`minian.minian_rs.thread_allocation` (logical CPUs, optional
 ``worker_cpu_ratio``, and derived worker count). The default ratio is **2/3**
 of ``(logical CPUs − reserve)`` (floored, at least one worker).
+
+Dask ``distributed.LocalCluster`` memory / threads / chunk sizing are read from
+environment keys on :class:`PipelineEnv` (see :func:`dask_worker_memory_limit`,
+:func:`dask_threads_per_worker`, :func:`dask_chunk_target_mb`).
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
+from datetime import datetime, timezone
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, Mapping, Optional, Tuple
 
 import numpy as np
 
+from ._version import get_package_version
 from .constants import MINIAN_CONFIG_FILENAME, get_minian_intermediate_path
 
 # Keys shared by :func:`apply_blas_thread_env` and default :attr:`PipelineConfig.thread_env`.
@@ -26,20 +33,44 @@ _BLAS_THREAD_KEYS: Tuple[str, ...] = (
     "OPENBLAS_NUM_THREADS",
 )
 
+
+class PipelineEnv:
+    """``MINIAN_*`` environment keys and defaults for pipeline / Dask drivers.
+
+    Import this class once instead of many module-level constants, e.g.
+    ``from minian.config import PipelineEnv`` then ``PipelineEnv.MINIAN_NWORKERS``.
+    """
+
+    #: Default ``worker_cpu_ratio`` for :func:`resolve_n_workers` (matches Rust ``DEFAULT_WORKER_CPU_RATIO``).
+    DEFAULT_WORKER_CPU_RATIO: float = 2.0 / 3.0
+
+    MINIAN_NWORKERS: str = "MINIAN_NWORKERS"
+    MINIAN_WORKER_CPU_RATIO: str = "MINIAN_WORKER_CPU_RATIO"
+    MINIAN_WORKER_MEMORY: str = "MINIAN_WORKER_MEMORY"
+    MINIAN_THREADS_PER_WORKER: str = "MINIAN_THREADS_PER_WORKER"
+    MINIAN_CHUNK_MB: str = "MINIAN_CHUNK_MB"
+
+    DEFAULT_DASK_WORKER_MEMORY: str = "2GB"
+    DEFAULT_DASK_THREADS_PER_WORKER: int = 2
+    DEFAULT_DASK_CHUNK_TARGET_MB: int = 200
+
+
 __all__ = [
-    "DEFAULT_WORKER_CPU_RATIO",
     "PipelineConfig",
+    "PipelineEnv",
     "apply_blas_thread_env",
     "apply_minian_intermediate",
     "apply_thread_env",
+    "build_pipeline_effective_record",
+    "dask_chunk_target_mb",
+    "dask_threads_per_worker",
+    "dask_worker_memory_limit",
     "load_pipeline_config",
     "main",
     "pipeline_config_to_jsonable",
     "resolve_n_workers",
+    "resolve_pipeline_config_candidate",
 ]
-
-#: Default ``worker_cpu_ratio`` for :func:`resolve_n_workers` (matches Rust ``DEFAULT_WORKER_CPU_RATIO``).
-DEFAULT_WORKER_CPU_RATIO: float = 2.0 / 3.0
 
 
 def _thread_env_same(limit: str) -> Dict[str, str]:
@@ -47,25 +78,68 @@ def _thread_env_same(limit: str) -> Dict[str, str]:
     return {k: limit for k in _BLAS_THREAD_KEYS}
 
 
-def _env_nonempty_positive_int(var: str) -> Optional[int]:
+def _strip_env(var: str) -> Optional[str]:
+    """Return stripped ``os.environ[var]``, or ``None`` if missing / blank."""
     raw = os.environ.get(var)
-    if raw is None or raw.strip() == "":
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s or None
+
+
+def _env_nonempty_positive_int(var: str) -> Optional[int]:
+    s = _strip_env(var)
+    if s is None:
         return None
     try:
-        return max(1, int(raw.strip()))
+        return max(1, int(s))
     except ValueError:
         return None
 
 
+def dask_worker_memory_limit() -> str:
+    """``LocalCluster(memory_limit=...)`` string from :envvar:`MINIAN_WORKER_MEMORY` or default."""
+    s = _strip_env(PipelineEnv.MINIAN_WORKER_MEMORY)
+    return s if s is not None else PipelineEnv.DEFAULT_DASK_WORKER_MEMORY
+
+
+def _env_int_min(var: str, default: int, *, minimum: int) -> int:
+    s = _strip_env(var)
+    if s is None:
+        return default
+    try:
+        return max(minimum, int(s))
+    except ValueError:
+        return default
+
+
+def dask_threads_per_worker() -> int:
+    """``LocalCluster(threads_per_worker=...)`` from :envvar:`MINIAN_THREADS_PER_WORKER` or default."""
+    return _env_int_min(
+        PipelineEnv.MINIAN_THREADS_PER_WORKER,
+        PipelineEnv.DEFAULT_DASK_THREADS_PER_WORKER,
+        minimum=1,
+    )
+
+
+def dask_chunk_target_mb() -> int:
+    """Chunk budget (MB) for ``get_optimal_chk`` from :envvar:`MINIAN_CHUNK_MB` or default."""
+    return _env_int_min(
+        PipelineEnv.MINIAN_CHUNK_MB,
+        PipelineEnv.DEFAULT_DASK_CHUNK_TARGET_MB,
+        minimum=1,
+    )
+
+
 def _env_worker_cpu_ratio(
-    env_var: str = "MINIAN_WORKER_CPU_RATIO",
+    env_var: str = PipelineEnv.MINIAN_WORKER_CPU_RATIO,
 ) -> Optional[float]:
     """Parse a positive float from ``env_var``, clamp to ``(0, 1]``; ``None`` if unset or invalid."""
-    raw = os.environ.get(env_var)
-    if raw is None or raw.strip() == "":
+    s = _strip_env(env_var)
+    if s is None:
         return None
     try:
-        v = float(raw.strip())
+        v = float(s)
     except ValueError:
         return None
     if not math.isfinite(v) or v <= 0.0:
@@ -76,9 +150,9 @@ def _env_worker_cpu_ratio(
 def resolve_n_workers(
     *,
     reserve: int = 1,
-    env_var: str = "MINIAN_NWORKERS",
+    env_var: str = PipelineEnv.MINIAN_NWORKERS,
     worker_cpu_ratio: Optional[float] = None,
-    env_ratio_var: str = "MINIAN_WORKER_CPU_RATIO",
+    env_ratio_var: str = PipelineEnv.MINIAN_WORKER_CPU_RATIO,
 ) -> int:
     """
     Worker count for ``dask.distributed.LocalCluster(..., n_workers=...)``.
@@ -89,7 +163,7 @@ def resolve_n_workers(
     Otherwise uses :func:`minian.minian_rs.thread_allocation` (requires the Rust
     extension) with ``reserve`` and a ratio resolved as: explicit ``worker_cpu_ratio``
     if not ``None``, else :func:`_env_worker_cpu_ratio` from ``env_ratio_var``, else
-    :data:`DEFAULT_WORKER_CPU_RATIO` (``2/3``).
+    :attr:`PipelineEnv.DEFAULT_WORKER_CPU_RATIO` (``2/3``).
     """
     from_env = _env_nonempty_positive_int(env_var)
     if from_env is not None:
@@ -105,12 +179,12 @@ def resolve_n_workers(
     if ratio is None:
         ratio = _env_worker_cpu_ratio(env_ratio_var)
     if ratio is None:
-        ratio = DEFAULT_WORKER_CPU_RATIO
+        ratio = PipelineEnv.DEFAULT_WORKER_CPU_RATIO
     return int(_thread_allocation(reserve, ratio).cluster_workers)
 
 
 def apply_thread_env(env: Mapping[str, Any]) -> None:
-    """Apply key/value pairs to :func:`os.environ` (values are stringified)."""
+    """Apply key/value pairs to ``os.environ`` (values are stringified)."""
     for k, v in env.items():
         os.environ[str(k)] = str(v)
 
@@ -171,7 +245,7 @@ class PipelineConfig:
     #: Use ``None`` to auto-pick from CPUs (see :func:`resolve_n_workers`).
     n_workers: Optional[int] = None
     reserve_cores_for_os: int = 1
-    #: ``None`` → :envvar:`MINIAN_WORKER_CPU_RATIO` or :data:`DEFAULT_WORKER_CPU_RATIO`.
+    #: ``None`` → :envvar:`MINIAN_WORKER_CPU_RATIO` or :attr:`PipelineEnv.DEFAULT_WORKER_CPU_RATIO`.
     worker_cpu_ratio: Optional[float] = None
     #: Applied by :meth:`apply_environment` unless ``blas_threads`` is passed there.
     thread_env: Dict[str, str] = field(default_factory=_default_thread_env)
@@ -247,9 +321,9 @@ class PipelineConfig:
         if self.worker_cpu_ratio is not None:
             r = float(self.worker_cpu_ratio)
             if r != r or r <= 0.0:
-                return DEFAULT_WORKER_CPU_RATIO
+                return PipelineEnv.DEFAULT_WORKER_CPU_RATIO
             return min(1.0, max(r, 1e-12))
-        return _env_worker_cpu_ratio() or DEFAULT_WORKER_CPU_RATIO
+        return _env_worker_cpu_ratio() or PipelineEnv.DEFAULT_WORKER_CPU_RATIO
 
     def resolved_n_workers(self) -> int:
         if self.n_workers is not None:
@@ -371,6 +445,73 @@ def pipeline_config_to_jsonable(
     return data
 
 
+def _pipeline_config_delta_json(run: Any, base: Any) -> Optional[Any]:
+    """Values from ``run`` for keys/branches differing from ``base``."""
+    if run == base:
+        return None
+    if isinstance(run, dict) and isinstance(base, dict):
+        out: Dict[str, Any] = {}
+        for k in sorted(set(run) | set(base)):
+            if k not in run:
+                continue
+            if k not in base:
+                out[k] = run[k]
+            else:
+                sub = _pipeline_config_delta_json(run[k], base[k])
+                if sub is not None:
+                    out[k] = sub
+        return out if out else None
+    return run
+
+
+def build_pipeline_effective_record(
+    cfg: PipelineConfig,
+    *,
+    n_workers: int,
+    worker_memory_limit: str,
+    threads_per_worker: int,
+    chunk_target_mb: int,
+    cli_worker_cpu_ratio: Optional[float] = None,
+) -> Dict[str, Any]:
+    """JSON-friendly snapshot: version, builtin-defaults digest, diff, cluster env."""
+    baseline = pipeline_config_to_jsonable(
+        PipelineConfig(),
+        resolve_paths=False,
+        include_resolved_workers=False,
+    )
+    baseline_blob = json.dumps(baseline, sort_keys=True, separators=(",", ":"))
+    defaults_digest = hashlib.sha256(baseline_blob.encode()).hexdigest()[:16]
+
+    effective = pipeline_config_to_jsonable(
+        cfg,
+        resolve_paths=True,
+        include_resolved_workers=False,
+    )
+    delta = _pipeline_config_delta_json(effective, baseline)
+    if delta is None:
+        delta = {}
+
+    ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    resolved_cluster: Dict[str, Any] = {
+        "n_workers": n_workers,
+        "worker_memory_limit": worker_memory_limit,
+        "threads_per_worker": threads_per_worker,
+        "chunk_target_mb": chunk_target_mb,
+        "resolved_worker_cpu_ratio": cfg.resolved_worker_cpu_ratio(),
+    }
+    if cli_worker_cpu_ratio is not None:
+        resolved_cluster["cli_worker_cpu_ratio"] = cli_worker_cpu_ratio
+
+    return {
+        "timestamp": ts,
+        "minian_version": get_package_version(),
+        "defaults_digest": defaults_digest,
+        "delta_from_builtin_defaults": delta,
+        "resolved_cluster": resolved_cluster,
+    }
+
+
 def _pipeline_config_from_json_dict(raw: Dict[str, Any]) -> PipelineConfig:
     """Merge decoded JSON objects into :class:`PipelineConfig` field defaults."""
     raw = dict(raw)
@@ -391,6 +532,15 @@ def _expanded_config_path(path: Optional[str], cwd: Optional[str]) -> str:
     return os.path.abspath(os.path.expanduser(path))
 
 
+def resolve_pipeline_config_candidate(
+    path: Optional[str] = None,
+    *,
+    cwd: Optional[str] = None,
+) -> str:
+    """Return the JSON path :func:`load_pipeline_config` checks before applying defaults."""
+    return _expanded_config_path(path, cwd)
+
+
 def load_pipeline_config(
     path: Optional[str] = None,
     *,
@@ -405,7 +555,7 @@ def load_pipeline_config(
     If the chosen path is not an existing file, returns a fresh
     :class:`PipelineConfig` with built-in defaults. Invalid JSON raises.
     """
-    candidate = _expanded_config_path(path, cwd)
+    candidate = resolve_pipeline_config_candidate(path, cwd=cwd)
 
     if not os.path.isfile(candidate):
         return PipelineConfig()
@@ -447,7 +597,7 @@ def main() -> None:
     parser.add_argument(
         "--include-resolved-workers",
         action="store_true",
-        help="Add resolved_n_workers (env MINIAN_NWORKERS or CPU-based).",
+        help=f"Add resolved_n_workers (env {PipelineEnv.MINIAN_NWORKERS} or CPU-based).",
     )
     args = parser.parse_args()
     cfg = PipelineConfig()

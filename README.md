@@ -5,7 +5,7 @@
 [![Tests](https://github.com/DeniseCaiLab/minian/actions/workflows/testandcov.yml/badge.svg)](https://github.com/DeniseCaiLab/minian/actions/workflows/testandcov.yml)
 [![Codecov](https://codecov.io/gh/DeniseCaiLab/minian/graph/badge.svg)](https://codecov.io/gh/DeniseCaiLab/minian)
 [![Documentation](https://readthedocs.org/projects/minian/badge/?version=latest)](https://minian.readthedocs.io/en/latest/)
-
+[![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License](https://img.shields.io/github/license/DeniseCaiLab/minian)](https://www.gnu.org/licenses/gpl-3.0)
 
 # MiniAn
@@ -18,6 +18,13 @@ MiniAn is an analysis pipeline and visualization tool inspired by both [CaImAn](
 - [FFmpeg](https://ffmpeg.org/download.html).
 
 # Quick Start Guide
+
+1. Clone **this fork** and `cd` into it:
+
+   ```bash
+   git clone https://github.com/thicclatka/minian.git
+   cd minian
+   ```
 
 1. Create/sync environment: `uv sync`
 1. Install pipeline notebooks (optional): `uv run minian-install --notebooks`

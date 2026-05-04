@@ -23,6 +23,25 @@ from .utilities import local_extreme, med_baseline, save_minian, sps_lstsq
 log = logging.getLogger(__name__)
 
 
+def _varr_sub_by_seed_chunks(varr: xr.DataArray, seeds: pd.DataFrame) -> xr.DataArray:
+    """Stack seed-wise crops along ``index`` for chunked processing.
+
+    Vectorized indexing on Dask-backed arrays can collapse to a single huge chunk;
+    split seeds into up to 128 groups with chunk size at most 100 to limit memory.
+    """
+    chk_size = min(int(len(seeds) / 128), 100)
+    vsub_ls = []
+    for _, seed_sub in seeds.groupby(np.arange(len(seeds)) // chk_size):
+        vsub = varr.sel(
+            height=seed_sub["height"].to_xarray(), width=seed_sub["width"].to_xarray()
+        )
+        vsub_ls.append(vsub)
+    varr_sub = xr.concat(vsub_ls, "index", join="outer")
+    if getattr(varr_sub.data, "chunks", None):
+        varr_sub = varr_sub.chunk({"frame": -1})
+    return varr_sub
+
+
 def seeds_init(
     varr: xr.DataArray,
     wnd_size=500,
@@ -99,7 +118,7 @@ def seeds_init(
         max_idx = [np.random.randint(0, nfm - 1, wnd_size) for _ in range(nchunk)]
     log.info("computing max projections")
     res = [max_proj_frame(varr, cur_idx) for cur_idx in max_idx]
-    max_res = xr.concat(res, "sample")
+    max_res = xr.concat(res, "sample", join="outer")
     max_res = save_minian(max_res.rename("max_res"), int_path, overwrite=True)
     log.info("calculating local maximum")
     # apply_ufunc(..., dask="parallelized") requires one chunk per core dim.
@@ -336,19 +355,7 @@ def pnr_refine(
         unless `thres` is `"auto"`.
     """
     log.info("selecting seeds")
-    # vectorized indexing on dask arrays produce a single chunk.
-    # to memory issue, split seeds into 128 chunks, with chunk size no greater than 100
-    chk_size = min(int(len(seeds) / 128), 100)
-    vsub_ls = []
-    for _, seed_sub in seeds.groupby(np.arange(len(seeds)) // chk_size):
-        vsub = varr.sel(
-            height=seed_sub["height"].to_xarray(), width=seed_sub["width"].to_xarray()
-        )
-        vsub_ls.append(vsub)
-    varr_sub = xr.concat(vsub_ls, "index")
-    # apply_ufunc(..., dask="parallelized") needs one chunk on each core dim (frame).
-    if getattr(varr_sub.data, "chunks", None):
-        varr_sub = varr_sub.chunk({"frame": -1})
+    varr_sub = _varr_sub_by_seed_chunks(varr, seeds)
     if med_wnd:
         log.info("removing baseline")
         varr = xr.apply_ufunc(
@@ -508,18 +515,7 @@ def ks_refine(varr: xr.DataArray, seeds: pd.DataFrame, sig=0.01) -> pd.DataFrame
         column already exists in input `seeds` it will be overwritten.
     """
     log.info("selecting seeds")
-    # vectorized indexing on dask arrays produce a single chunk.
-    # to memory issue, split seeds into 128 chunks, with chunk size no greater than 100
-    chk_size = min(int(len(seeds) / 128), 100)
-    vsub_ls = []
-    for _, seed_sub in seeds.groupby(np.arange(len(seeds)) // chk_size):
-        vsub = varr.sel(
-            height=seed_sub["height"].to_xarray(), width=seed_sub["width"].to_xarray()
-        )
-        vsub_ls.append(vsub)
-    varr_sub = xr.concat(vsub_ls, "index")
-    if getattr(varr_sub.data, "chunks", None):
-        varr_sub = varr_sub.chunk({"frame": -1})
+    varr_sub = _varr_sub_by_seed_chunks(varr, seeds)
     log.info("performing KS test")
     ks = xr.apply_ufunc(
         ks_perseed,

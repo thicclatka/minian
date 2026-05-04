@@ -4,6 +4,7 @@ dictionaryDefinitions: []
 dictionaries: []
 words:
   - absolutized
+  - absolutizes
   - Adict
   - alignviewer
   - amax
@@ -75,6 +76,7 @@ words:
   - fhist
   - fidx
   - filt
+  - filterwarnings
   - flist
   - fmread
   - fnames
@@ -127,11 +129,15 @@ words:
   - localcluster
   - lsqr
   - lstsq
+  - lxml
+  - markupsafe
   - mathbf
   - maturin
   - maximas
   - maxs
+  - mdict
   - mdim
+  - mdims
   - medpy
   - metas
   - minian
@@ -150,6 +156,7 @@ words:
   - nbsplit
   - ncell
   - nchunk
+  - ndarray
   - ndcurve
   - ndenumerate
   - ndimage
@@ -184,6 +191,7 @@ words:
   - pipmov
   - pipusub
   - pjoin
+  - pnplot
   - pnwgt
   - polyder
   - polyfit
@@ -249,6 +257,7 @@ words:
   - subsetting
   - subviews
   - summ
+  - swigvarlink
   - tensordot
   - thres
   - thresholding
@@ -293,6 +302,7 @@ words:
   - xarray
   - XLABEL
   - xrconcat
+  - xyrange
   - YLABEL
   - zstore
 ignoreWords:

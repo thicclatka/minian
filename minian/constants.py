@@ -7,6 +7,7 @@ import os.path
 __all__ = [
     "MINIAN",
     "MINIAN_CONFIG_FILENAME",
+    "MINIAN_CONFIG_EFFECTIVE_FILENAME",
     "MINIAN_INTERMEDIATE",
     "minian_folder_under",
     "get_minian_intermediate_path",
@@ -14,6 +15,7 @@ __all__ = [
 
 MINIAN = "minian"
 MINIAN_CONFIG_FILENAME = f"{MINIAN}_config.json"
+MINIAN_CONFIG_EFFECTIVE_FILENAME = f"{MINIAN}_config_effective.json"
 MINIAN_INTERMEDIATE = f"{MINIAN}_intermediate"
 
 
@@ -29,7 +31,7 @@ def get_minian_intermediate_path(parent: str | None = None) -> str:
     :attr:`minian.config.PipelineConfig.intpath` defaults).
 
     With ``parent`` set, returns ``os.path.join(os.path.abspath(parent), MINIAN_INTERMEDIATE)``
-    (e.g. pass the parent of a notebook video folder to keep scratch beside that tree).
+    (e.g. pass the session / video data directory so scratch lives next to that folder).
     """
     if parent is None:
         return os.path.abspath(MINIAN_INTERMEDIATE)

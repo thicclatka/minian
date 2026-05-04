@@ -117,7 +117,7 @@ class VArrayViewer:
         if isinstance(varr, list):
             for iv, v in enumerate(varr):
                 varr[iv] = v.assign_coords(data_var=v.name)
-            self.ds = xr.concat(varr, dim="data_var")
+            self.ds = xr.concat(varr, dim="data_var", join="outer")
             meta_dims = ["data_var"]
         elif isinstance(varr, xr.DataArray):
             self.ds = varr.to_dataset()
@@ -173,7 +173,7 @@ class VArrayViewer:
                 sum_list: list[xr.DataArray] = []
                 for k, v in summ.items():
                     sum_list.append(v.compute().assign_coords(sum_var=k))
-                summary = xr.concat(sum_list, dim="sum_var")
+                summary = xr.concat(sum_list, dim="sum_var", join="outer")
         self.summary = summary
         if layout:
             self.ds_sub = self.ds

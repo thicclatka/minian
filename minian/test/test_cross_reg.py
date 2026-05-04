@@ -9,7 +9,11 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from minian.pipelines.cross_reg import parse_cross_reg_argv, run_cross_reg
+from minian.pipelines.cross_reg import (
+    DEFAULT_PARAM_DIST,
+    parse_cross_reg_argv,
+    run_cross_reg,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEMO_DATA = _REPO_ROOT / "demo_data"
@@ -18,6 +22,12 @@ _DEMO_DATA = _REPO_ROOT / "demo_data"
 def test_parse_cross_reg_argv_defaults() -> None:
     args = parse_cross_reg_argv([])
     assert args.data == "."
+    assert args.param_dist == DEFAULT_PARAM_DIST
+
+
+def test_parse_cross_reg_argv_param_dist() -> None:
+    args = parse_cross_reg_argv(["--param-dist", "12"])
+    assert args.param_dist == 12
 
 
 def test_parse_cross_reg_argv_data_override() -> None:

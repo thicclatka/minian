@@ -470,7 +470,7 @@ class CNMFViewer:
             try:
                 prv_val = idxs_dict[list(idxs_dict.keys())[ig - 1]]
                 wgt_grp.value = prv_val
-            except:
+            except Exception:
                 pass
 
         wgt_grp_prv.param.watch(prv, "clicks")
@@ -484,7 +484,7 @@ class CNMFViewer:
             try:
                 nxt_val = idxs_dict[list(idxs_dict.keys())[ig + 1]]
                 wgt_grp.value = nxt_val
-            except:
+            except Exception:
                 pass
 
         wgt_grp_nxt.param.watch(nxt, "clicks")

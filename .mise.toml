@@ -13,3 +13,11 @@ run = "uv run mypy minian"
 [tasks.format]
 description = "Run pre-commit (Black on minian/) — needs: uv sync --group dev"
 run = "uv run pre-commit run --all-files"
+
+[tasks.export-reqs-base]
+description = "Refresh uv.lock and export runtime deps to requirements/requirements-base.txt"
+run = "uv export --format requirements.txt --no-dev --no-annotate --no-header -o requirements/requirements-base.txt"
+
+[tasks.export-reqs-doc]
+description = "Refresh uv.lock and export [project.optional-dependencies].docs closure (no root package) to requirements/requirements-doc.txt"
+run = "uv export --format requirements.txt --no-dev --extra docs --no-emit-project --no-annotate --no-header -o requirements/requirements-doc.txt"

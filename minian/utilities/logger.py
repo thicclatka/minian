@@ -68,6 +68,11 @@ def configure_logging(
     lg.propagate = False
 
 
+def configure_cli_logging() -> None:
+    """CLI entry: honor ``MINIAN_LOG_LEVEL`` and attach a handler (``force=True``)."""
+    configure_logging(os.getenv("MINIAN_LOG_LEVEL", "INFO"), force=True)
+
+
 def format_wall_duration(elapsed: float) -> str:
     """Human-readable span: ``12.345s``, ``3m 12.345s``, ``1h 4m 2.345s``."""
     if elapsed < 60:

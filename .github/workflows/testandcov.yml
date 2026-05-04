@@ -21,7 +21,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -40,7 +40,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: runner.os == 'Linux'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
           fail_ci_if_error: false
@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload notebook artifacts
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: notebooks-${{ steps.commit_sha.outputs.value }}
           path: artifact
