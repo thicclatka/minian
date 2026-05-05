@@ -7,6 +7,13 @@ The headless driver and :func:`minian.config.load_pipeline_config` read a single
 
 Export built-in defaults with ``uv run minian-pipeline-defaults`` (see :doc:`cli`). For CLI flags and logging env vars, see :ref:`pipeline configuration and environment <cli-pipeline-env>` in :doc:`cli`.
 
+Effective run record (``minian_config_effective.json``)
+-------------------------------------------------------
+
+This is **not** a second config file you maintain by hand. On each **successful** headless pipeline finish, the driver writes :data:`minian.constants.MINIAN_CONFIG_EFFECTIVE_FILENAME` next to ``--data`` (same directory convention as the main JSON). The payload is built by :func:`minian.config.build_pipeline_effective_record` and is a small **audit snapshot**: minian version, a digest of built-in defaults, the sparse diff between the **resolved** effective config and those defaults (e.g. absolutized ``intpath``), and how the Dask ``LocalCluster`` was actually sized (``n_workers``, memory limit, threads, chunk budget, resolved CPU ratio).
+
+``timestamp`` is new every run. Other fields stay the same when you rerun with the same install, machine, ``minian_config.json``, and data path; they change when defaults in code, hardware-derived worker counts, or your JSON differ.
+
 Paths and run layout
 --------------------
 
