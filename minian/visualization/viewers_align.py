@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 import colorcet as cc
 import cv2
+import holoviews as hv
 import numpy as np
 import pandas as pd
 import panel as pn
@@ -13,11 +14,8 @@ from matplotlib import cm
 from matplotlib.colors import ListedColormap
 from panel import widgets as pnwgt
 
-import holoviews as hv
-
 from ..motion_correction import apply_shifts
 from ..utilities import rechunk_like
-
 from ._numeric import norm
 
 log = logging.getLogger(__name__)
@@ -32,7 +30,7 @@ _ALIGN_CHANNEL_CMAPS = {
 
 class AlignViewer:
     """
-    Interactive visualization of cross-registration resuls.
+    Interactive visualization of cross-registration results.
 
     Hint
     ----

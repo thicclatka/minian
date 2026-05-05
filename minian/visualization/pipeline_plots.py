@@ -276,6 +276,18 @@ def visualize_gmm_fit(
     ).opts(height=Gmm.FIG_HEIGHT, width=Gmm.FIG_WIDTH)
 
 
+def _regularize_unit_id_coord_for_image_grid(data: xr.DataArray) -> xr.DataArray:
+    """If ``unit_id`` spacing is uneven, remap coords to ``0..N-1`` for HV Image grids."""
+    if "unit_id" not in data.coords:
+        return data
+    uid = np.asarray(data["unit_id"].values)
+    if uid.size > 1:
+        uid_step = np.diff(uid)
+        if not np.allclose(uid_step, uid_step[0], rtol=1e-3, atol=0):
+            return data.assign_coords(unit_id=np.arange(uid.size))
+    return data
+
+
 def visualize_spatial_update(
     A_dict: dict,
     C_dict: dict,
@@ -342,6 +354,7 @@ def visualize_spatial_update(
                 output_dtypes=[C.dtype],
             )
         C = C.compute()
+        C = _regularize_unit_id_coord_for_image_grid(C)
         h, w = A.sizes["height"], A.sizes["width"]
         cents_df = centroid(A)
         hv_pts_dict[key] = hv.Points(

@@ -23,6 +23,12 @@ from .utilities import local_extreme, med_baseline, save_minian, sps_lstsq
 log = logging.getLogger(__name__)
 
 
+def _safe_frame_max(varr: xr.DataArray) -> xr.DataArray:
+    """Compute frame-wise max without all-NaN reduction warnings."""
+    max_proj = varr.fillna(-np.inf).max("frame")
+    return max_proj.where(varr.notnull().any("frame"))
+
+
 def _varr_sub_by_seed_chunks(varr: xr.DataArray, seeds: pd.DataFrame) -> xr.DataArray:
     """Stack seed-wise crops along ``index`` for chunked processing.
 
@@ -156,7 +162,7 @@ def max_proj_frame(varr: xr.DataArray, idx: Union[np.ndarray, slice]) -> xr.Data
     max_proj : xr.DataArray
         The max projection.
     """
-    return varr.isel(frame=idx).max("frame")
+    return _safe_frame_max(varr.isel(frame=idx))
 
 
 def local_max_roll(
@@ -470,7 +476,7 @@ def intensity_refine(
         indicating whether the seed is considered valid by this function.
     """
     try:
-        fm_max = varr.max("frame")
+        fm_max = _safe_frame_max(varr)
     except ValueError:
         log.info("using input as max projection")
         fm_max = varr

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-# ``Preprocess.{IMAGE_TITLE, …}`` feed ``hv.relabel()`` (subplot label), not
-# ``hv.opts`` ``title`` / Bokeh ``Figure.title`` strings (see ``visualization`` package doc).
-
 from enum import StrEnum
 
 

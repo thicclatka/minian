@@ -594,7 +594,7 @@ class CNMFViewer:
             usub = self.strm_usub.usub
         if usub:
             if self._useAC:
-                umask = (self.A_sub.sel(unit_id=usub) > 0).any("unit_id")
+                umask = (self.A_sub.sel(unit_id=usub) > 0).any("unit_id").compute()
                 A_sub = self.A_sub.sel(unit_id=usub).where(umask, drop=True).fillna(0)
                 C_sub = self.C_sub.sel(unit_id=usub)
                 AC = xr.apply_ufunc(

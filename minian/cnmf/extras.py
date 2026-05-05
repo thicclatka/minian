@@ -645,7 +645,8 @@ def compute_AtC(A: xr.DataArray, C: xr.DataArray) -> xr.DataArray:
         "height", "width").
     C : xr.DataArray
         Temporal components of cells. Should have dimensions "frame" and
-        "unit_id".
+        "unit_id". ``unit_id`` is intersected between ``A`` and ``C``
+        (in ``A``'s order); inputs with different merges can be mixed safely.
 
     Returns
     -------
@@ -653,15 +654,43 @@ def compute_AtC(A: xr.DataArray, C: xr.DataArray) -> xr.DataArray:
         The outer product representing estimated movie data. Has dimensions
         ("frame", "height", "width").
     """
+    n_a = int(A.sizes["unit_id"])
+    n_c = int(C.sizes["unit_id"])
+    c_uid_set = set(np.asarray(C.coords["unit_id"].values).tolist())
+    shared_uid = np.array(
+        [u for u in np.asarray(A.coords["unit_id"].values) if u in c_uid_set],
+        dtype=A.coords["unit_id"].dtype,
+    )
+    if shared_uid.size == 0:
+        raise ValueError(
+            "compute_AtC: no overlapping unit_id between A and C "
+            "(e.g. merged `A` with intermediate-only `C` after different merges)."
+        )
+    if shared_uid.size != n_a or shared_uid.size != n_c:
+        log.info(
+            "compute_AtC: aligning on %s shared cells (A had %s, C had %s)",
+            shared_uid.size,
+            n_a,
+            n_c,
+        )
+    A = A.sel(unit_id=shared_uid).transpose("unit_id", "height", "width")
+    C = C.sel(unit_id=shared_uid).transpose("frame", "unit_id")
+
     fm, h, w = (
         C.coords["frame"].values,
         A.coords["height"].values,
         A.coords["width"].values,
     )
+
     A = darr.from_array(
         A.data.map_blocks(sparse.COO, dtype=A.dtype).compute(), chunks=-1
     )
-    C = C.transpose("frame", "unit_id").data.map_blocks(sparse.COO, dtype=C.dtype)
+    C = C.data.map_blocks(sparse.COO, dtype=C.dtype)
+    nu, nh, nw = int(A.shape[0]), int(A.shape[1]), int(A.shape[2])
+    A = A.rechunk((nu, nh, nw))
+    frame_chunks = C.chunks[0] if C.chunks is not None else (int(C.shape[0]),)
+    C = C.rechunk((frame_chunks, (nu,)))
+
     AtC = darr.tensordot(C, A, axes=(1, 0)).map_blocks(
         lambda a: a.todense(), dtype=A.dtype
     )

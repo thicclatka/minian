@@ -595,7 +595,7 @@ def open_minian(
         if return_dict:
             ds = {str(x.name): x for x in dslist}
         else:
-            ds = xr.merge(dslist, compat="no_conflicts")
+            ds = xr.merge(dslist, compat="no_conflicts", join="outer")
     else:
         raise FileNotFoundError(dpath)
     if (not return_dict) and post_process:

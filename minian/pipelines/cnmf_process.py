@@ -11,6 +11,7 @@ import argparse
 import dataclasses
 import json
 import logging
+import numpy as np
 import os
 import time
 from dataclasses import dataclass
@@ -411,8 +412,10 @@ def run_pipeline(
             )
             write_video(vid_arr, "minian_mc.mp4", paths.dpath)
 
+        max_proj_da = Y_fm_chk.fillna(-np.inf).max("frame")
+        max_proj_da = max_proj_da.where(Y_fm_chk.notnull().any("frame"))
         max_proj = save_minian(
-            Y_fm_chk.max("frame").rename("max_proj"), **paths.param_save_minian
+            max_proj_da.rename("max_proj"), **paths.param_save_minian
         ).compute()
 
         with wall_section(WALL_PREFIX, "seeds_init", color=ANSIColor.BRIGHT_RED):
