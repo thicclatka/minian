@@ -83,11 +83,3 @@ jobs:
         with:
           name: notebooks-${{ steps.commit_sha.outputs.value }}
           path: artifact
-
-      - name: Trigger RTDs build
-        uses: dfm/rtds-action@v1
-        if: runner.os == 'Linux' && github.event_name == 'push'
-        with:
-          webhook_url: ${{ secrets.RTDS_WEBHOOK_URL }}
-          webhook_token: ${{ secrets.RTDS_WEBHOOK_TOKEN }}
-          commit_ref: ${{ github.ref }}
